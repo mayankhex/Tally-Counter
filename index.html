@@ -5,8 +5,8 @@
   <title>Tally Counter</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    html,body {
-      height:100%; margin:0; padding:0;
+    html, body {
+      height: 100%; margin: 0; padding: 0;
     }
     body {
       min-height: 100vh;
@@ -15,14 +15,16 @@
       color: #fff;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: center;
-      position:relative;
+      position: relative;
       width: 100vw;
       overflow: hidden;
       cursor: pointer;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
+      padding-top: 44px; /* Add top margin */
+      box-sizing: border-box;
     }
     .glow {
       position: absolute;
@@ -30,11 +32,11 @@
       background: radial-gradient(ellipse at 60% 60%, #2186ff33 0%, transparent 90%);
       filter: blur(80px);
       pointer-events: none;
-      left: 30%; top: 65%; transform:translate(-50%,-50%);
+      left: 30%; top: 65%; transform: translate(-50%,-50%);
       z-index: 0;
     }
     h2 {
-      letter-spacing: 1px; font-weight: bold; margin: 38px 0 14px 0;
+      letter-spacing: 1px; font-weight: bold; margin: 32px 0 14px 0;
       text-shadow: 0 2px 12px #000, 0 0px 8px #1976d2;
       z-index: 1; font-size: 2.1em;
     }
@@ -53,28 +55,28 @@
     .aggregate-label {
       font-size: 1.08em;
       color: #aad8ffcc;
-      margin-top:18px;
-      font-weight:700;
-      letter-spacing:0.5px;
-      z-index:1;
+      margin-top: 18px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      z-index: 1;
     }
     .aggregate-value {
       font-size: 2.5em;
       font-weight: 700;
       color: #fff;
-      background: linear-gradient(90deg,#1976d2 20%,#43e3ff 80%);
+      background: linear-gradient(90deg, #1976d2 20%, #43e3ff 80%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       text-shadow: 0 4px 27px #2186ff33;
-      letter-spacing:2.5px;
+      letter-spacing: 2.5px;
       margin-bottom: 7vh;
-      z-index:1;
+      z-index: 1;
     }
     .reset-bar {
       position: fixed;
-      top: 18px;
+      top: 34px;
       right: 30px;
-      z-index:2;
+      z-index: 2;
       display: flex;
       gap: 12px;
     }
@@ -88,32 +90,38 @@
       padding: 9px 23px;
       cursor: pointer;
       box-shadow: 0 2px 12px #001a;
-      transition:.13s;
-      outline:none;
+      transition: .13s;
+      outline: none;
+      z-index: 3;
     }
     .reset-btn:hover, .agg-reset-btn:hover {
-      background:#2186ff;
-      color:#fff;
+      background: #2186ff;
+      color: #fff;
       box-shadow: 0 5px 18px #2186ff55;
       transform: scale(1.04);
     }
     .link-graph {
       position: fixed;
-      top: 22px; left: 22px;
+      top: 38px; left: 22px;
       z-index: 3;
       background: #1c232e;
       color: #7ad7ff;
       font-size: 1.09em;
       font-weight: bold;
       text-align: center;
-      letter-spacing:0.5px;
+      letter-spacing: 0.5px;
       border-bottom: 2px solid #2186ff;
       border-radius: 11px;
       padding: 10px 23px 7px 19px;
-      text-decoration:none;
-      transition:.13s;
+      text-decoration: none;
+      transition: .13s;
       box-shadow: 0 2px 20px #1486ff17;
       display: inline-block;
+    }
+    .link-graph:active,
+    .reset-btn:active,
+    .agg-reset-btn:active {
+      filter: brightness(0.95) !important;
     }
     .link-graph:hover {
       background: #2186ff;
@@ -121,21 +129,22 @@
       border-bottom-color: #fff;
     }
     @media (max-width: 650px) {
-      .glow { width:350px; height:320px;}
+      .glow { width: 350px; height: 320px; }
       .counter-value { font-size: 3.1em; }
-      .aggregate-value { font-size:1.3em;}
-      .reset-bar { top:7px; right:3px; }
-      .reset-btn, .agg-reset-btn { font-size:0.9em; padding:7px 13px;}
-      .link-graph { padding: 8px 11px 6px 11px; font-size:0.97em; top:10px; left:10px;}
+      .aggregate-value { font-size: 1.3em; }
+      .reset-bar { top: 19px; right: 3px; }
+      .reset-btn, .agg-reset-btn { font-size: 0.9em; padding: 7px 13px; }
+      .link-graph { padding: 8px 11px 6px 11px; font-size: 0.97em; top: 20px; left: 10px; }
+      body { padding-top: 28px; }
     }
   </style>
 </head>
 <body>
   <div class="glow"></div>
-  <a href="graph.html" class="link-graph">See History Graph</a>
+  <a href="graph.html" class="link-graph" tabindex="1">See History Graph</a>
   <div class="reset-bar">
-    <button type="button" class="reset-btn" onclick="resetCounter(event)">Reset Day</button>
-    <button type="button" class="agg-reset-btn" onclick="resetAggregate(event)">Reset All</button>
+    <button type="button" class="reset-btn" onclick="resetCounter(event)" tabindex="2">Reset Day</button>
+    <button type="button" class="agg-reset-btn" onclick="resetAggregate(event)" tabindex="3">Reset All</button>
   </div>
   <h2>Tally Counter</h2>
   <div id="counter" class="counter-value">0</div>
@@ -143,7 +152,6 @@
   <div id="aggregate" class="aggregate-value">0</div>
 <script>
   const STORAGE_KEY = 'tally_counter_by_date';
-
   function today() {
     return new Date().toISOString().slice(0, 10);
   }
@@ -190,37 +198,40 @@
     document.getElementById('aggregate').textContent = getAggregate();
   }
 
-  // Smoother, debounced, guaranteed single increment per user action (prevents lag & duplicates):
-  function shouldIncrementFromEvent(e) {
-    if (
-      e.target.classList.contains('reset-btn') ||
-      e.target.classList.contains('agg-reset-btn') ||
-      e.target.classList.contains('link-graph') ||
-      (e.target.closest && e.target.closest('.reset-bar'))
-    ) return false;
-    return true;
+  // Improved touch/click event logic for mobile/desktop:
+  let touchInProgress = false;
+  function isUIElement(ev) {
+    // Explicit check for .reset-btn, .agg-reset-btn, .link-graph and inside reset-bar
+    return (
+      ev.target.classList.contains('reset-btn') ||
+      ev.target.classList.contains('agg-reset-btn') ||
+      ev.target.classList.contains('link-graph') ||
+      (ev.target.closest && ev.target.closest('.reset-bar'))
+    );
   }
 
-  // Debounce for touch/click events
-  let touchInProgress = false;
-  // Desktop: Single click
   document.body.addEventListener('click', function(e) {
-    if (touchInProgress) return; // Ignore click if touch was just fired
-    if (shouldIncrementFromEvent(e)) increment();
+    // Only increment if: not a UI element, and not immediately after touch
+    if (touchInProgress || isUIElement(e)) return;
+    increment();
   });
 
-  // Mobile: One increment per actual touch (never double fires)
+  // Mobile/touch -- safe, fast, smooth, only one increment and does not block buttons!
   document.body.addEventListener('touchstart', function(e) {
-    if (!shouldIncrementFromEvent(e)) return;
+    if (isUIElement(e)) return; // allow default for real buttons/links
     if (touchInProgress) return;
     touchInProgress = true;
     increment();
-    setTimeout(()=>{ touchInProgress = false; }, 180); // Allow rapid but not double triggers
+    setTimeout(()=>{ touchInProgress = false; }, 140);
   }, {passive:true});
 
-  // Prevent selecting/highlight and prevent flash
-  document.body.addEventListener('mousedown', e => e.preventDefault());
-  document.body.addEventListener('touchend', e => e.preventDefault());
+  // Prevent selection/highlight and prevent flash for only true body region
+  document.body.addEventListener('mousedown', function(e) {
+    if (!isUIElement(e)) e.preventDefault();
+  });
+  document.body.addEventListener('touchend', function(e) {
+    if (!isUIElement(e)) e.preventDefault();
+  });
 
   updateUI();
 </script>
