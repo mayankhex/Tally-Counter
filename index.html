@@ -6,9 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     html,body {
-      height:100%;
-      margin:0;
-      padding:0;
+      height:100%; margin:0; padding:0;
     }
     body {
       min-height: 100vh;
@@ -19,10 +17,12 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
       position:relative;
+      width: 100vw;
+      overflow: hidden;
       cursor: pointer;
       user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     .glow {
       position: absolute;
@@ -34,10 +34,9 @@
       z-index: 0;
     }
     h2 {
-      letter-spacing: 1px; font-weight: bold; margin: 0 0 12px 0;
+      letter-spacing: 1px; font-weight: bold; margin: 38px 0 14px 0;
       text-shadow: 0 2px 12px #000, 0 0px 8px #1976d2;
-      z-index: 1;
-      font-size: 2.1em;
+      z-index: 1; font-size: 2.1em;
     }
     .counter-value {
       font-size: 6em;
@@ -99,49 +98,49 @@
       transform: scale(1.04);
     }
     .link-graph {
-      position: absolute;
-      bottom: 36px;
-      left: 50%; transform: translateX(-50%);
-      display: block;
-      color: #79cbfd;
+      position: fixed;
+      top: 22px; left: 22px;
+      z-index: 3;
+      background: #1c232e;
+      color: #7ad7ff;
       font-size: 1.09em;
       font-weight: bold;
       text-align: center;
       letter-spacing:0.5px;
-      border-bottom: 2.2px solid #2186ff;
-      padding-bottom: 1px;
-      padding-top: 8px;
+      border-bottom: 2px solid #2186ff;
+      border-radius: 11px;
+      padding: 10px 23px 7px 19px;
       text-decoration:none;
-      z-index: 1;
       transition:.13s;
-      background:none;
+      box-shadow: 0 2px 20px #1486ff17;
+      display: inline-block;
     }
     .link-graph:hover {
+      background: #2186ff;
       color: #fff;
       border-bottom-color: #fff;
     }
     @media (max-width: 650px) {
       .glow { width:350px; height:320px;}
-      .counter-value { font-size: 3em; }
+      .counter-value { font-size: 3.1em; }
       .aggregate-value { font-size:1.3em;}
       .reset-bar { top:7px; right:3px; }
       .reset-btn, .agg-reset-btn { font-size:0.9em; padding:7px 13px;}
+      .link-graph { padding: 8px 11px 6px 11px; font-size:0.97em; top:10px; left:10px;}
     }
   </style>
 </head>
 <body>
   <div class="glow"></div>
+  <a href="graph.html" class="link-graph">See History Graph</a>
   <div class="reset-bar">
     <button type="button" class="reset-btn" onclick="resetCounter(event)">Reset Day</button>
     <button type="button" class="agg-reset-btn" onclick="resetAggregate(event)">Reset All</button>
   </div>
   <h2>Tally Counter</h2>
   <div id="counter" class="counter-value">0</div>
-
   <div class="aggregate-label">Total (All Days)</div>
   <div id="aggregate" class="aggregate-value">0</div>
-
-  <a href="graph.html" class="link-graph">See History Graph</a>
 <script>
   const STORAGE_KEY = 'tally_counter_by_date';
 
@@ -190,8 +189,11 @@
     document.getElementById('counter').textContent = getTodayCount();
     document.getElementById('aggregate').textContent = getAggregate();
   }
-  // Anywhere click to increment, except on UI elements
-  document.body.addEventListener('click', function(e) {
+
+  // Ensure only ONE increment per tap/click/touch
+  let lastTouch = 0, touchTimer = null;
+  function handleIncrementTrigger(e) {
+    // If clicking/tapping on reset or link: do not increment
     if (
       e.target.classList.contains('reset-btn') ||
       e.target.classList.contains('agg-reset-btn') ||
@@ -199,19 +201,22 @@
       e.target.closest('.reset-bar')
     ) return;
     increment();
-  });
-  // Prevent selecting/highlighting
-  document.body.addEventListener('mousedown', e => e.preventDefault());
-  // Mobile-safe touch
+  }
+  // Desktop: One increment per click
+  document.body.addEventListener('click', handleIncrementTrigger);
+
+  // Mobile: only one increment per tap
   document.body.addEventListener('touchstart', function(e) {
-    if (
-      e.target.classList.contains('reset-btn') ||
-      e.target.classList.contains('agg-reset-btn') ||
-      e.target.classList.contains('link-graph') ||
-      e.target.closest('.reset-bar')
-    ) return;
-    increment();
-  });
+    // Prevent double triggers: Only fire if not just incremented
+    if (Date.now() - lastTouch < 400) return;
+    lastTouch = Date.now();
+    handleIncrementTrigger(e);
+  }, {passive:true});
+
+  // Prevent selection/highlight (no visual flash)
+  document.body.addEventListener('mousedown', e => e.preventDefault());
+  document.body.addEventListener('touchend', e => e.preventDefault());
+
   updateUI();
 </script>
 </body>
