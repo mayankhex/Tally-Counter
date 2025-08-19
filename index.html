@@ -190,30 +190,35 @@
     document.getElementById('aggregate').textContent = getAggregate();
   }
 
-  // Ensure only ONE increment per tap/click/touch
-  let lastTouch = 0, touchTimer = null;
-  function handleIncrementTrigger(e) {
-    // If clicking/tapping on reset or link: do not increment
+  // Smoother, debounced, guaranteed single increment per user action (prevents lag & duplicates):
+  function shouldIncrementFromEvent(e) {
     if (
       e.target.classList.contains('reset-btn') ||
       e.target.classList.contains('agg-reset-btn') ||
       e.target.classList.contains('link-graph') ||
-      e.target.closest('.reset-bar')
-    ) return;
-    increment();
+      (e.target.closest && e.target.closest('.reset-bar'))
+    ) return false;
+    return true;
   }
-  // Desktop: One increment per click
-  document.body.addEventListener('click', handleIncrementTrigger);
 
-  // Mobile: only one increment per tap
+  // Debounce for touch/click events
+  let touchInProgress = false;
+  // Desktop: Single click
+  document.body.addEventListener('click', function(e) {
+    if (touchInProgress) return; // Ignore click if touch was just fired
+    if (shouldIncrementFromEvent(e)) increment();
+  });
+
+  // Mobile: One increment per actual touch (never double fires)
   document.body.addEventListener('touchstart', function(e) {
-    // Prevent double triggers: Only fire if not just incremented
-    if (Date.now() - lastTouch < 400) return;
-    lastTouch = Date.now();
-    handleIncrementTrigger(e);
+    if (!shouldIncrementFromEvent(e)) return;
+    if (touchInProgress) return;
+    touchInProgress = true;
+    increment();
+    setTimeout(()=>{ touchInProgress = false; }, 180); // Allow rapid but not double triggers
   }, {passive:true});
 
-  // Prevent selection/highlight (no visual flash)
+  // Prevent selecting/highlight and prevent flash
   document.body.addEventListener('mousedown', e => e.preventDefault());
   document.body.addEventListener('touchend', e => e.preventDefault());
 
