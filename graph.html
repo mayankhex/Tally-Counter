@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tally History Graph</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body {
+      min-height: 100vh;
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg,#19191c 0%, #11141b 100%);
+      color: #e2e9f7;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      overflow: hidden;
+      position: relative;
+    }
+    .glow {
+      position: absolute;
+      width: 600px; height: 480px;
+      background: radial-gradient(circle at 70% 80%, #2196f344 0%, transparent 90%);
+      filter: blur(80px);
+      pointer-events: none;
+      left: 40%; top: 60%; transform:translate(-50%,-50%);
+      z-index: 0;
+    }
+    h2 {
+      letter-spacing: 1px;
+      font-weight: bold;
+      margin-top: 36px;
+      margin-bottom: 16px;
+      font-size: 2.2em;
+      text-shadow: 0 2px 16px #000b, 0 0px 10px #2186ff55;
+      z-index: 1;
+    }
+    .back-link {
+      position: absolute; left: 26px; top: 26px;
+      color: #7ad7ff;
+      text-decoration: none;
+      font-size: 1.1em;
+      font-weight: bold;
+      border-bottom: 2px solid #2186ff;
+      padding-bottom: 2px;
+      z-index: 2;
+      transition:.15s;
+      background:none;
+    }
+    .back-link:hover {
+      color:#fff; border-bottom-color:#fff;
+    }
+    .filter-box {
+      margin-bottom: 20px;
+      background:rgba(23, 40, 65, 0.70);
+      border-radius: 12px;
+      padding: 16px 18px 10px 18px;
+      box-shadow:0 2px 20px #2196f311;
+      display:inline-flex;
+      align-items: center;
+      gap:22px;
+      font-size:1.08em;
+      z-index:1;
+    }
+    .filter-box label { font-size:1em; margin-right:6px;}
+    .filter-box select, .filter-box input[type="month"], .filter-box input[type="date"] {
+      background:#232c3a; color:#fff; border:1px solid #33475b; border-radius:5px; padding:3px 7px;
+      font-size:1em;
+    }
+    #graph {
+      border:1px solid #2229;
+      background:#15171e;
+      border-radius:22px;
+      margin-top: 10px;
+      box-shadow: 0 6px 50px #1e90ff11;
+      z-index: 1;
+      display:block;
+      margin-bottom: 18px;
+      touch-action:none;
+      cursor:pointer;
+      transition: box-shadow 0.2s;
+    }
+    .no-data {
+      color:#ff8a80;
+      font-size:1.1em;
+      margin-top:30px;
+      z-index:1;
+    }
+    #tooltip {
+      position: fixed;
+      pointer-events: none;
+      color: #fff;
+      background: linear-gradient(120deg,#2186ffcc,#252c3e99 80%);
+      border-radius: 8px;
+      padding: 8px 18px 6px 14px;
+      font-size: 1em;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-weight: 600;
+      box-shadow: 0 2px 18px #1976d2aa;
+      z-index: 10;
+      opacity:0;
+      transition: opacity 0.08s;
+      white-space:nowrap;
+      filter: drop-shadow(0 6px 30px #1976ff45);
+      border: 1.5px solid #2bb4ff44;
+      letter-spacing:0.5px;
+    }
+    @media (max-width: 500px) {
+      .glow { width:280px; height:280px;}
+      #graph { width:98vw; }
+      .filter-box { gap:10px; font-size:0.97em; padding:10px; }
+      h2 { margin-top: 22px; font-size:1.2em;}
+      .back-link { left:7px; top:8px;}
+      #tooltip { font-size:0.95em;}
+    }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  <a href="index.html" class="back-link">&larr; Counter</a>
+  <h2>Tally History Graph</h2>
+  <div class="filter-box">
+    <label><input type="radio" name="viewmode" value="date" checked onchange="redraw()"> By Date</label>
+    <label><input type="radio" name="viewmode" value="month" onchange="redraw()"> By Month</label>
+    <span id="dateFilter">
+      <label>From: <input type="date" id="fromDate"></label>
+      <label>To: <input type="date" id="toDate"></label>
+    </span>
+    <span id="monthFilter" style="display:none;">
+      <label>From: <input type="month" id="fromMonth"></label>
+      <label>To: <input type="month" id="toMonth"></label>
+    </span>
+  </div>
+  <canvas id="graph" width="420" height="190"></canvas>
+  <div id="nodata" class="no-data" style="display:none;">No data in selected range.</div>
+  <div id="tooltip"></div>
+  <script>
+    // --- Storage and Data ---
+    const STORAGE_KEY = 'tally_counter_by_date';
+
+    function getData() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    }
+
+    function setDateInputs() {
+      const data = getData();
+      const keys = Object.keys(data).sort();
+      if (keys.length==0) return;
+      // Dates
+      let minDate = keys[0];
+      let maxDate = keys[keys.length-1];
+      const fromDate = document.getElementById('fromDate');
+      const toDate = document.getElementById('toDate');
+      fromDate.min = minDate;
+      fromDate.max = maxDate;
+      toDate.min = minDate;
+      toDate.max = maxDate;
+      fromDate.value = minDate;
+      toDate.value = maxDate;
+      // Months
+      const months = keys.map(k=>k.slice(0,7));
+      let minMonth = months[0];
+      let maxMonth = months[months.length-1];
+      document.getElementById('fromMonth').min = minMonth;
+      document.getElementById('fromMonth').max = maxMonth;
+      document.getElementById('toMonth').min = minMonth;
+      document.getElementById('toMonth').max = maxMonth;
+      document.getElementById('fromMonth').value = minMonth;
+      document.getElementById('toMonth').value = maxMonth;
+    }
+
+    function redraw() {
+      const mode = document.querySelector('input[name="viewmode"]:checked').value;
+      document.getElementById('dateFilter').style.display = (mode==='date') ? 'inline' : 'none';
+      document.getElementById('monthFilter').style.display = (mode==='month') ? 'inline' : 'none';
+      drawGraph();
+    }
+
+    function filterDataByDate(data, from, to) {
+      return Object.fromEntries(
+        Object.entries(data)
+          .filter(([k, v]) => (!from || k >= from) && (!to || k <= to))
+      );
+    }
+    function reduceDataByMonth(data, from, to) {
+      let months = {};
+      for (let [date, v] of Object.entries(data)) {
+        let m = date.slice(0,7);
+        if ((!from || m >= from) && (!to || m <= to))
+          months[m] = (months[m]||0) + v;
+      }
+      return months;
+    }
+
+    // --- Chart Drawing ---
+    let animFrame = null;
+    let chartData = {}, chartMode = 'date', chartKeys = [], chartVals = [], animProgress = 1;
+
+    function drawGraph(animation=0) {
+      const data = getData();
+      const canvas = document.getElementById('graph');
+      const nodata = document.getElementById('nodata');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      if (animFrame) cancelAnimationFrame(animFrame);
+
+      // Mode and filters
+      chartMode = document.querySelector('input[name="viewmode"]:checked').value;
+      let keys = [], vals = [];
+      if (chartMode==='date') {
+        let from = document.getElementById('fromDate').value;
+        let to = document.getElementById('toDate').value;
+        const d = filterDataByDate(data, from, to);
+        keys = Object.keys(d).sort();
+        vals = keys.map(k=>d[k]);
+      } else {
+        let from = document.getElementById('fromMonth').value;
+        let to = document.getElementById('toMonth').value;
+        const d = reduceDataByMonth(data, from, to);
+        keys = Object.keys(d).sort();
+        vals = keys.map(k=>d[k]);
+      }
+      chartData = data; chartKeys = keys; chartVals = vals;
+
+      if (keys.length === 0) {
+        canvas.style.display='none';
+        nodata.style.display='';
+        return;
+      } else {
+        canvas.style.display='block';
+        nodata.style.display='none';
+      }
+
+      // Chart area settings
+      const x0 = 47, y0 = 22, w = canvas.width - x0 - 22, h = canvas.height - y0 - 38;
+
+      // Axes
+      ctx.save();
+      ctx.strokeStyle = "#445a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x0, y0 + h);
+      ctx.lineTo(x0 + w, y0 + h);
+      ctx.stroke();
+      ctx.restore();
+
+      // Max value for scaling, bar layout
+      const max = Math.max(5, ...vals);
+      let barW = Math.floor((w-24) / Math.max(vals.length,1)) - 2;
+      if (barW < 7) barW = 7;
+
+      // Animate draw (on first draw, or value change)
+      if (!animation) animProgress = 0;
+      if (animProgress < 1) {
+        animProgress += 0.13 + (1 - animProgress) * 0.20;
+        if (animProgress > 1) animProgress = 1;
+      }
+
+      // Bars
+      for (let i=0; i<keys.length; ++i) {
+        const val = vals[i];
+        const barH = Math.round((h-6) * val / max * animProgress);
+        const x = x0 + 14 + i*(barW+6), y = y0 + h - barH;
+        // Bar shadow/glow
+        ctx.save();
+        let grad = ctx.createLinearGradient(x, y, x+barW, y+h);
+        grad.addColorStop(0, chartMode==='date' ? "#33cfff" : "#9a9fff");
+        grad.addColorStop(1, "#1b428a");
+        ctx.fillStyle = grad;
+        ctx.shadowColor = chartMode==='date' ? "#33badd66" : "#8c7bfc88";
+        ctx.shadowBlur = 16 + 20*animProgress;
+        ctx.beginPath();
+        ctx.moveTo(x, y + barH);
+        ctx.lineTo(x, y + 7);
+        ctx.bezierCurveTo(x, y, x+barW, y, x+barW, y + 7);
+        ctx.lineTo(x+barW, y + barH);
+        ctx.arcTo(x, y + barH, x+barW, y + barH, 7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        // Value label
+        ctx.save();
+        ctx.font = "bold 14px Segoe UI, Arial";
+        ctx.fillStyle = "#f4fdff";
+        ctx.textAlign = 'center';
+        ctx.shadowColor='#1976ff55'; ctx.shadowBlur=6;
+        ctx.fillText(val, x+barW/2, y-7);
+        ctx.restore();
+        // X label
+        ctx.save();
+        ctx.translate(x+barW/2, y0 + h + 20);
+        ctx.rotate(-Math.PI/6);
+        ctx.fillStyle="#bbd5ff";
+        ctx.font = "13px Segoe UI, Arial";
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur=0;
+        ctx.fillText(chartMode==='date'?keys[i].slice(5):keys[i], 0, 0);
+        ctx.restore();
+      }
+      // Animate if not done
+      if (animProgress < 1) animFrame = requestAnimationFrame(()=>drawGraph(1));
+    }
+
+    // --- Tooltip (Hover & Tap) ---
+    let lastBar = -1;
+    const canvas = document.getElementById('graph');
+    const tooltip = document.getElementById('tooltip');
+
+    function showTooltip(i, clientX, clientY) {
+      if (i===-1 || !chartKeys[i]) {
+        tooltip.style.opacity = 0;
+        lastBar = -1; return;
+      }
+      if (i === lastBar && tooltip.style.opacity=="1") return;
+      lastBar = i;
+      const val = chartVals[i];
+      const xlab = chartMode === 'date'
+        ? chartKeys[i]
+        : (chartKeys[i] + " (" + monthName(chartKeys[i]) + ")");
+      tooltip.textContent = xlab + ": " + val;
+      tooltip.style.opacity = 1;
+      setTimeout(() => { 
+        tooltip.style.opacity=1;
+      },1);
+      // Tooltip location adjustment
+      let x = clientX+15, y = clientY-18;
+      if (window.innerWidth-x<110) x=window.innerWidth-115;
+      if (window.innerHeight-y<55) y = window.innerHeight-55;
+      tooltip.style.left = x + "px";
+      tooltip.style.top = y + "px";
+    }
+    function hideTooltip() {
+      tooltip.style.opacity = 0; lastBar = -1;
+    }
+    function monthName(ym) {
+      // "2025-08" => August 2025
+      let [y,m] = ym.split('-');
+      return (['','January','February','March','April','May','June','July','August','September','October','November','December'])[+m] + ' ' + y;
+    }
+
+    function getBarAtPos(mx, my) {
+      // Returns bar index or -1 if none
+      const canvas = document.getElementById('graph');
+      // Chart area
+      const x0 = 47, y0 = 22, w = canvas.width - x0 - 22, h = canvas.height - y0 - 38;
+      let barW = Math.floor((w-24) / Math.max(chartVals.length,1)) - 2;
+      if (barW < 7) barW = 7;
+      for(let i=0;i<chartVals.length;++i){
+        const x = x0 + 14 + i*(barW+6);
+        if(mx>=x && mx<=x+barW && my>=y0){ return i; }
+      }
+      return -1;
+    }
+
+    // Mouse events
+    canvas.addEventListener('mousemove', function(e){
+      if (!chartVals.length) return hideTooltip();
+      const r = canvas.getBoundingClientRect();
+      const i = getBarAtPos(e.clientX - r.left, e.clientY - r.top);
+      if(i>=0) showTooltip(i,e.clientX,e.clientY);
+      else hideTooltip();
+    });
+    canvas.addEventListener('mouseleave', hideTooltip);
+
+    // Touch events for mobile
+    canvas.addEventListener('touchstart', function(e){
+      if (!chartVals.length) return hideTooltip();
+      const r = canvas.getBoundingClientRect();
+      const t = e.touches[0];
+      const i = getBarAtPos(t.clientX - r.left, t.clientY - r.top);
+      if(i>=0) showTooltip(i, t.clientX, t.clientY);
+      else hideTooltip();
+    });
+    canvas.addEventListener('touchmove', function(e){
+      if (!chartVals.length) return hideTooltip();
+      const r = canvas.getBoundingClientRect();
+      const t = e.touches;
+      const i = getBarAtPos(t.clientX - r.left, t.clientY - r.top);
+      if(i>=0) showTooltip(i, t.clientX, t.clientY);
+      else hideTooltip();
+    });
+    canvas.addEventListener('touchend', hideTooltip);
+
+    // --- Bindings & Initial draw ---
+    window.onload = function() {
+      setDateInputs();
+      redraw();
+      ['fromDate','toDate','fromMonth','toMonth'].forEach(id =>
+        document.getElementById(id).addEventListener('change',redraw)
+      );
+    };
+    document.querySelectorAll('input[name="viewmode"]').forEach(el=>el.addEventListener('change',redraw));
+  </script>
+</body>
+</html>
